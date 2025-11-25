@@ -1,0 +1,5 @@
+*.md
+.env
+venv/**
+.DS_Store
+*.json
