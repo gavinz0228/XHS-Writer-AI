@@ -126,20 +126,23 @@ def search_with_tavily(query: str):
         print(f"Tavily 搜索 '{query}' 时出错: {e}")
         return ""
 
-def generate_xiaohongshu_post(topic_title: str, topic_url: str, search_results: str):
+def generate_xiaohongshu_post(topic_title: str, topic_url: str, search_results: str, word_limit: int = 100):
     """
     使用 LLM 生成小红书风格的笔记。
     参数:
         topic_title (str): 热点话题标题。
         topic_url (str): 热点话题链接。
         search_results (str): Tavily 搜索到的详细信息。
+        word_limit (int): 笔记的字数限制。
     返回:
         str: 生成的小红书笔记内容。
     """
+    print(f"正在生成小红书笔记: {topic_title} (字数限制: {word_limit})...")
+
     prompt = f"""
-    你是一个小红书（Xiaohongshu）的时尚生活博主，请根据以下热点话题和详细信息，
+    你是一个小红书爆款笔记创作者。请根据以下热点话题和搜索结果，
     撰写一篇吸引人的小红书笔记。笔记内容要有趣，活泼，容易调动读者情绪，
-    可以使用少量表情符号，多用网络流行语，字数严格控制在 100 字以内。
+    可以使用少量表情符号，多用网络流行语，字数严格控制在 {word_limit} 字以内。
     请确保笔记内容原创，避免直接复制搜索结果。
     同时生成相关的少于10个的话题# 例如“#娱乐八卦”，“#吃瓜”， 显示在笔记的文本下面。
 

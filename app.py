@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import concurrent.futures
-from main import fetch_hot_topics, select_interesting_topics, process_single_topic
+from main import fetch_hot_topics, select_interesting_topics, process_single_topic, search_with_tavily, generate_xiaohongshu_post, generate_xhs_card
 
 app = Flask(__name__)
 
@@ -56,6 +56,52 @@ def generate():
                 print(f"处理话题时出错: {exc}")
 
     return jsonify({"results": results})
+
+@app.route('/custom')
+def custom():
+    return render_template('custom.html')
+
+@app.route('/api/generate_custom', methods=['POST'])
+def generate_custom():
+    data = request.json
+    topic = data.get('topic', '').strip()
+    
+    if not topic:
+        return jsonify({"error": "请输入话题内容"}), 400
+
+    print(f"收到自定义话题请求: {topic}")
+
+    try:
+        # 1. 搜索
+        from main import search_with_tavily, generate_xiaohongshu_post, generate_xhs_card
+        
+        search_results = search_with_tavily(topic)
+        
+        # 2. 生成笔记 (字数限制 120)
+        post_content = generate_xiaohongshu_post(topic, "", search_results, word_limit=120)
+        
+        # 保存到文件
+        import time
+        file_name = f"xiaohongshu_custom_{int(time.time())}.md"
+        with open(file_name, "w", encoding="utf-8") as f:
+            f.write(post_content)
+            
+        # 3. 生成卡片
+        card_data = generate_xhs_card(post_content, count=1)
+        
+        images = card_data.get('images', [])
+        image_url = images[0]['url'] if images else None
+        
+        return jsonify({
+            "topic": topic,
+            "post_file": file_name,
+            "post_content": post_content,
+            "image_url": image_url
+        })
+
+    except Exception as e:
+        print(f"处理自定义话题出错: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
