@@ -141,6 +141,7 @@ def generate_xiaohongshu_post(topic_title: str, topic_url: str, search_results: 
     撰写一篇吸引人的小红书笔记。笔记内容要有趣，活泼，容易调动读者情绪，
     可以使用少量表情符号，多用网络流行语，字数严格控制在 100 字以内。
     请确保笔记内容原创，避免直接复制搜索结果。
+    同时生成相关的少于10个的话题# 例如“#娱乐八卦”，“#吃瓜”， 显示在笔记的文本下面。
 
     热点话题: {topic_title}
     话题链接: {topic_url}
@@ -235,6 +236,7 @@ def process_single_topic(topic, index, total):
         return {
             "topic": topic['title'],
             "post_file": file_name,
+            "post_content": xiaohongshu_post,
             "card_data": card_data
         }
     else:
