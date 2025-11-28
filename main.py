@@ -126,7 +126,7 @@ def search_with_tavily(query: str):
         print(f"Tavily 搜索 '{query}' 时出错: {e}")
         return ""
 
-def generate_xiaohongshu_post(topic_title: str, topic_url: str, search_results: str, word_limit: int = 100):
+def generate_xiaohongshu_post(topic_title: str, topic_url: str, search_results: str, word_limit: int = 120):
     """
     使用 LLM 生成小红书风格的笔记。
     参数:
@@ -169,7 +169,71 @@ def generate_xiaohongshu_post(topic_title: str, topic_url: str, search_results: 
         print(f"生成 '{topic_title}' 的小红书笔记时出错: {e}")
         return "生成笔记失败。"
 
-def generate_xhs_card(text: str, keywords: str = "hot topic", count: int = 1):
+def select_theme(content: str) -> str:
+    """
+    根据笔记内容选择最合适的主题
+    """
+    themes = [
+        "apple-notes",
+        "coil-notebook",
+        "pop-art",
+        "bytedance",
+        "alibaba",
+        "art-deco",
+        "glassmorphism",
+        "warm",
+        "minimal",
+        "minimalist",
+        "dreamy",
+        "nature",
+        "xiaohongshu",
+        "notebook",
+        "darktech",
+        "typewriter",
+        "watercolor",
+        "traditional-chinese",
+        "fairytale",
+        "business",
+        "japanese-magazine",
+        "cyberpunk",
+        "meadow-dawn"
+    ]
+    
+    prompt = f"""
+    请根据以下小红书笔记内容，从给定的主题列表中选择一个最合适的主题。
+    
+    笔记内容:
+    {content[:500]}...
+
+    主题列表: {', '.join(themes)}
+
+    请只返回选中的主题名称，不要包含任何其他文字。
+    """
+    
+    try:
+        response = llm_client.chat.completions.create(
+            model=llm_model,
+            messages=[
+                {"role": "system", "content": "你是一个设计专家，擅长为内容匹配视觉风格。"},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3
+        )
+        selected_theme = response.choices[0].message.content.strip().lower()
+        
+        # 简单的验证
+        if selected_theme not in themes:
+            print(f"LLM 返回了未知主题 '{selected_theme}'，使用默认主题 'minimal'")
+            return 'minimal'
+            
+        print(f"为笔记选择了主题: {selected_theme}")
+        return selected_theme
+        
+    except Exception as e:
+        print(f"选择主题时出错: {e}，使用默认主题 'minimal'")
+        return 'minimal'
+
+def generate_xhs_card(text: str, keywords: str = "hot topic", count: int = 1, theme: str = "minimal"):
     """
     使用 md2card API 生成小红书卡片。
     参数:
@@ -179,6 +243,7 @@ def generate_xhs_card(text: str, keywords: str = "hot topic", count: int = 1):
     返回:
         dict: md2card API 返回的 JSON 数据，包含封面、标题、描述、图片等。
     """
+    print(f"正在调用 md2card API (Theme: {theme})...")
     url = "https://md2card.com/api/generate/cover"
     headers = {
         "x-api-key": MD2CARD_API_KEY,
@@ -187,8 +252,18 @@ def generate_xhs_card(text: str, keywords: str = "hot topic", count: int = 1):
     payload = {
         "text": text,
         "keywords": keywords,
-        "count": count
+        "count": count,
+        "theme": theme,
+        "themeMode": "light-mode"
     }
+    
+    print(f"Request URL: {url}")
+    # Mask API Key for logging
+    safe_headers = headers.copy()
+    if "x-api-key" in safe_headers:
+        safe_headers["x-api-key"] = "******"
+    print(f"Request Headers: {json.dumps(safe_headers, ensure_ascii=False)}")
+    print(f"Request Payload: {json.dumps(payload, ensure_ascii=False)}")
     
     try:
         response = requests.post(url, headers=headers, json=payload)
@@ -212,30 +287,29 @@ def process_single_topic(topic, index, total):
         return None
 
     print(f"正在生成小红书笔记: {topic['title']}...")
-    xiaohongshu_post = generate_xiaohongshu_post(
-        topic_title=topic['title'],
-        topic_url=topic['url'],
-        search_results=search_results
-    )
-
+    # 3. 生成小红书笔记
+    xiaohongshu_post = generate_xiaohongshu_post(topic['title'], topic['url'], search_results)
+    
     print(f"\n--- 已生成小红书笔记 ({topic['title']}) ---")
     print(xiaohongshu_post)
     
+    # 保存笔记到文件
     file_name = f"xiaohongshu_post_{index}.md"
     with open(file_name, "w", encoding="utf-8") as f:
-        f.write(f"# {topic['title']}\n\n")
-        f.write(f"来源: {topic['url']}\n\n")
         f.write(xiaohongshu_post)
     print(f"笔记已保存至 {file_name}")
 
-    # 生成小红书卡片
-    print(f"正在生成小红书卡片: {topic['title']}...")
-    keywords = topic['title']
-    # 默认生成 1 张卡片
-    card_data = generate_xhs_card(text=xiaohongshu_post, keywords=keywords, count=1)
-    
-    if card_data:
-        print(f"'{topic['title']}' 的小红书卡片生成成功。")
+    # 4. 选择主题
+    theme = select_theme(xiaohongshu_post)
+
+    # 5. 生成单个卡片
+    print(f"正在生成小红书卡片: {topic['title']} (Theme: {theme})...")
+    card_data = generate_xhs_card(xiaohongshu_post, keywords=topic['title'], count=1, theme=theme)
+
+    if card_data and 'images' in card_data and card_data['images']:
+        print(f"'{topic['title']}' 的小红书卡片生成成功 (共 {len(card_data['images'])} 张)。")
+        
+        # 构造返回数据结构
         return {
             "topic": topic['title'],
             "post_file": file_name,

@@ -95,10 +95,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const div = document.createElement('div');
         div.className = 'result-card';
 
-        const imageUrl = result.image_url || 'https://via.placeholder.com/300x400?text=No+Image';
+        let imagesHtml = '';
+        if (result.images && result.images.length > 0) {
+            imagesHtml = `<div class="card-images-container">`;
+            result.images.forEach(url => {
+                imagesHtml += `<img src="${url}" alt="${result.topic}" class="card-image" onclick="window.open('${url}', '_blank')">`;
+            });
+            imagesHtml += `</div>`;
+        } else {
+            imagesHtml = `<img src="https://via.placeholder.com/225x300?text=No+Image" class="card-image">`;
+        }
 
         div.innerHTML = `
-            <img src="${imageUrl}" alt="${result.topic}" class="card-image" onclick="window.open('${imageUrl}', '_blank')">
+            ${imagesHtml}
             <div class="card-content">
                 <h3 class="card-title">${result.topic}</h3>
                 <div class="card-text">${result.post_content || '暂无内容'}</div>

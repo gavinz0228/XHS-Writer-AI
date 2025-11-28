@@ -44,13 +44,14 @@ def generate():
                     # 提取我们需要展示的数据
                     card_data = result.get('card_data', {})
                     images = card_data.get('images', [])
-                    image_url = images[0]['url'] if images else None
+                    # 提取所有图片的URL
+                    image_urls = [img['url'] for img in images] if images else []
                     
                     results.append({
                         "topic": result['topic'],
                         "post_file": result['post_file'],
                         "post_content": result.get('post_content', ''),
-                        "image_url": image_url
+                        "images": image_urls
                     })
             except Exception as exc:
                 print(f"处理话题时出错: {exc}")
@@ -77,8 +78,8 @@ def generate_custom():
         
         search_results = search_with_tavily(topic)
         
-        # 2. 生成笔记 (字数限制 120)
-        post_content = generate_xiaohongshu_post(topic, "", search_results, word_limit=120)
+        # 2. 生成笔记 (字数限制 1000)
+        post_content = generate_xiaohongshu_post(topic, "", search_results, word_limit=1000)
         
         # 保存到文件
         import time
@@ -86,17 +87,27 @@ def generate_custom():
         with open(file_name, "w", encoding="utf-8") as f:
             f.write(post_content)
             
-        # 3. 生成卡片
-        card_data = generate_xhs_card(post_content, count=1)
+        # 3. 生成卡片 (分页处理已在 main.py 中实现，但这里我们手动调用了 generate_xhs_card，需要更新逻辑)
+        # 为了复用 main.py 的分页逻辑，最好重构代码。但为了快速实现，这里复制分页逻辑。
         
-        images = card_data.get('images', [])
-        image_url = images[0]['url'] if images else None
+        from main import select_theme
+        theme = select_theme(post_content)
+        
+        chunk_size = 120
+        chunks = [post_content[i:i+chunk_size] for i in range(0, len(post_content), chunk_size)]
+        
+        all_image_urls = []
+        for i, chunk in enumerate(chunks):
+            print(f"正在生成自定义话题卡片 ({i+1}/{len(chunks)}) (Theme: {theme})...")
+            card_data = generate_xhs_card(chunk, count=1, theme=theme)
+            if card_data and 'images' in card_data:
+                all_image_urls.extend([img['url'] for img in card_data['images']])
         
         return jsonify({
             "topic": topic,
             "post_file": file_name,
             "post_content": post_content,
-            "image_url": image_url
+            "images": all_image_urls
         })
 
     except Exception as e:
@@ -104,4 +115,4 @@ def generate_custom():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5002)
