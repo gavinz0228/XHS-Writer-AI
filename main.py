@@ -302,18 +302,23 @@ def generate_xhs_card(text: str, keywords: str = "hot topic", count: int = 1, th
         dict: md2card API 返回的 JSON 数据，包含封面、标题、描述、图片等。
     """
     print(f"正在调用 md2card API (Theme: {theme})...")
-    url = "https://md2card.com/api/generate/cover"
+    url = "https://md2card.com/api/generate"
     headers = {
         "x-api-key": MD2CARD_API_KEY,
         "Content-Type": "application/json"
     }
     payload = {
-        "text": text,
-        "keywords": keywords,
-        "count": count,
+        "markdown": text,
+        "themeMode": "",
         "theme": theme,
-        "themeMode": "light-mode"
-    }
+        "overHiddenMode": True,
+        "mdxMode": False,
+        "width": 440,
+        "height": 586,
+        "splitMode": "noSplit",
+        "background": "",
+        "weChatMode": False
+        }
     
     print(f"Request URL: {url}")
     # Mask API Key for logging
