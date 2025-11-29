@@ -5,6 +5,11 @@ import concurrent.futures
 from dotenv import load_dotenv
 from tavily import TavilyClient
 from openai import OpenAI
+import logging
+
+# Configure logging
+logging.basicConfig(filename='hashtag_debug.log', level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 # 加载环境变量
 load_dotenv()
@@ -144,7 +149,7 @@ def generate_xiaohongshu_post(topic_title: str, topic_url: str, search_results: 
     撰写一篇吸引人的小红书笔记。笔记内容要有趣，活泼，容易调动读者情绪，
     可以使用少量表情符号，多用网络流行语，字数严格控制在 {word_limit} 字以内。
     请确保笔记内容原创，避免直接复制搜索结果。
-    同时生成相关的少于10个的话题# 例如“#娱乐八卦”，“#吃瓜”， 显示在笔记的文本下面。
+    请不要在笔记内容中包含任何话题#。
 
     热点话题: {topic_title}
     话题链接: {topic_url}
@@ -168,6 +173,59 @@ def generate_xiaohongshu_post(topic_title: str, topic_url: str, search_results: 
     except Exception as e:
         print(f"生成 '{topic_title}' 的小红书笔记时出错: {e}")
         return "生成笔记失败。"
+
+def generate_hashtags(topic_title: str, xiaohongshu_post: str) -> list:
+    """
+    使用 LLM 为小红书笔记生成相关的少于10个的话题#。
+    参数:
+        topic_title (str): 热点话题标题。
+        xiaohongshu_post (str): 生成的小红书笔记内容。
+    返回:
+        list: 包含话题#的字符串列表。
+    """
+    logging.info(f"正在为 '{topic_title}' 生成话题#...")
+    prompt = f"""
+    请根据以下小红书笔记内容和话题标题，生成少于10个相关的话题#。
+    例如：“#娱乐八卦”，“#吃瓜”，“#时尚穿搭”。
+    请以JSON格式返回话题#列表，key为"hashtags"，例如：
+    {{"hashtags": ["#话题1", "#话题2", "#话题3"]}}
+
+    话题标题: {topic_title}
+    小红书笔记内容:
+    {xiaohongshu_post}
+    """
+    try:
+        response = llm_client.chat.completions.create(
+            model=llm_model,
+            messages=[
+                {"role": "system", "content": "你是一个善于生成小红书爆款话题#的助手。"},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.7,
+        )
+        raw_response_content = response.choices[0].message.content
+        logging.info(f"LLM 原始话题#响应: {raw_response_content}")
+        result = json.loads(raw_response_content)
+        if isinstance(result, list):
+            # Ensure each item starts with #
+            hashtags = [tag if tag.startswith('#') else f'#{tag}' for tag in result[:10]]
+            logging.info(f"生成的话题#: {hashtags}")
+            return hashtags
+        elif isinstance(result, dict) and "hashtags" in result and isinstance(result["hashtags"], list):
+            hashtags = [tag if tag.startswith('#') else f'#{tag}' for tag in result["hashtags"][:10]]
+            logging.info(f"生成的话题#: {hashtags}")
+            return hashtags
+        elif isinstance(result, dict) and "topics" in result and isinstance(result["topics"], list):
+            hashtags = [tag if tag.startswith('#') else f'#{tag}' for tag in result["topics"][:10]]
+            logging.info(f"生成的话题#: {hashtags}")
+            return hashtags
+        else:
+            logging.warning(f"LLM 返回的话题#格式不正确，返回空列表。原始响应: {result}")
+            return []
+    except Exception as e:
+        logging.error(f"生成话题#时出错: {e}")
+        return []
 
 def select_theme(content: str) -> str:
     """
@@ -299,10 +357,13 @@ def process_single_topic(topic, index, total):
         f.write(xiaohongshu_post)
     print(f"笔记已保存至 {file_name}")
 
-    # 4. 选择主题
+    # 4. 生成话题#
+    hashtags = generate_hashtags(topic['title'], xiaohongshu_post)
+
+    # 5. 选择主题
     theme = select_theme(xiaohongshu_post)
 
-    # 5. 生成单个卡片
+    # 6. 生成单个卡片
     print(f"正在生成小红书卡片: {topic['title']} (Theme: {theme})...")
     card_data = generate_xhs_card(xiaohongshu_post, keywords=topic['title'], count=1, theme=theme)
 
@@ -310,11 +371,13 @@ def process_single_topic(topic, index, total):
         print(f"'{topic['title']}' 的小红书卡片生成成功 (共 {len(card_data['images'])} 张)。")
         
         # 构造返回数据结构
+        logging.info(f"process_single_topic 返回的话题#: {hashtags}")
         return {
             "topic": topic['title'],
             "post_file": file_name,
             "post_content": xiaohongshu_post,
-            "card_data": card_data
+            "card_data": card_data,
+            "hashtags": hashtags # Add hashtags here
         }
     else:
         print(f"'{topic['title']}' 的小红书卡片生成失败。")

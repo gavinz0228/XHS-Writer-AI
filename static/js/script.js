@@ -106,14 +106,21 @@ document.addEventListener('DOMContentLoaded', () => {
             imagesHtml = `<img src="https://via.placeholder.com/225x300?text=No+Image" class="card-image">`;
         }
 
+        let hashtagsHtml = '';
+        if (result.hashtags && result.hashtags.length > 0) {
+            hashtagsHtml = `<div class="card-hashtags">`;
+            result.hashtags.forEach(tag => {
+                hashtagsHtml += `<span class="hashtag">${tag}</span>`;
+            });
+            hashtagsHtml += `</div>`;
+        }
+
         div.innerHTML = `
             ${imagesHtml}
             <div class="card-content">
                 <h3 class="card-title">${result.topic}</h3>
                 <div class="card-text">${result.post_content || '暂无内容'}</div>
-                <div class="card-meta">
-                    <span>📄 <a href="/static/${result.post_file}" target="_blank">查看 Markdown</a></span>
-                </div>
+                ${hashtagsHtml} <!-- Add hashtags here -->
             </div>
         `;
 

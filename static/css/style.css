@@ -271,3 +271,20 @@ footer {
         transform: translateY(0);
     }
 }
+
+.card-hashtags {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.hashtag {
+    background-color: #f0f2f5;
+    color: #555;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
