@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import concurrent.futures
-from main import fetch_hot_topics, select_interesting_topics, process_single_topic, search_with_tavily, generate_xiaohongshu_post, generate_xhs_card
+from main import fetch_hot_topics, select_interesting_topics, process_single_topic_text_only, generate_image_for_post, search_with_tavily, generate_xiaohongshu_post, generate_xhs_card, select_theme, generate_hashtags
 
 app = Flask(__name__)
 
@@ -33,7 +33,7 @@ def generate():
     # 3. 并行处理
     with concurrent.futures.ThreadPoolExecutor(max_workers=count) as executor:
         future_to_topic = {
-            executor.submit(process_single_topic, topic, i+1, len(selected_topics)): topic 
+            executor.submit(process_single_topic_text_only, topic, i+1, len(selected_topics)): topic 
             for i, topic in enumerate(selected_topics)
         }
         
@@ -41,23 +41,33 @@ def generate():
             try:
                 result = future.result()
                 if result:
-                    # 提取我们需要展示的数据
-                    card_data = result.get('card_data', {})
-                    images = card_data.get('images', [])
-                    # 提取所有图片的URL
-                    image_urls = [img['url'] for img in images] if images else []
-                    
                     results.append({
                         "topic": result['topic'],
                         "post_file": result['post_file'],
                         "post_content": result.get('post_content', ''),
-                        "images": image_urls,
-                        "hashtags": result.get('hashtags', []) # Add hashtags here
+                        "hashtags": result.get('hashtags', [])
                     })
             except Exception as exc:
                 print(f"处理话题时出错: {exc}")
 
     return jsonify({"results": results})
+
+@app.route('/api/generate_image', methods=['POST'])
+def generate_image():
+    data = request.json
+    post_content = data.get('post_content', '')
+    topic_title = data.get('topic_title', '')
+
+    if not post_content or not topic_title:
+        return jsonify({"error": "缺少 'post_content' 或 'topic_title'"}), 400
+
+    card_data = generate_image_for_post(post_content, topic_title)
+
+    if card_data and 'images' in card_data:
+        image_urls = [img['url'] for img in card_data.get('images', [])]
+        return jsonify({"images": image_urls})
+    else:
+        return jsonify({"error": "无法生成图片"}), 500
 
 @app.route('/custom')
 def custom():

@@ -272,6 +272,33 @@ footer {
     }
 }
 
+.card-images-container .placeholder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    background-color: #f0f2f5;
+    color: #888;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+.card-images-container .placeholder:hover {
+    background-color: #e9ecef;
+}
+
+.card-images-container .placeholder.error {
+    color: var(--primary-color);
+}
+
+.card-images-container.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 .card-hashtags {
     margin-top: 10px;
     margin-bottom: 10px;

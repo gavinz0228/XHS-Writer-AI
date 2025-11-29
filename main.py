@@ -331,9 +331,9 @@ def generate_xhs_card(text: str, keywords: str = "hot topic", count: int = 1, th
         print(f"生成小红书卡片时出错: {e}")
         return None
 
-def process_single_topic(topic, index, total):
+def process_single_topic_text_only(topic, index, total):
     """
-    处理单个话题：搜索 -> 生成笔记 -> 生成卡片。
+    处理单个话题：搜索 -> 生成笔记和话题#。
     """
     print(f"\n--- 正在处理话题 {index}/{total}: {topic['title']} ---")
     
@@ -360,27 +360,29 @@ def process_single_topic(topic, index, total):
     # 4. 生成话题#
     hashtags = generate_hashtags(topic['title'], xiaohongshu_post)
 
-    # 5. 选择主题
-    theme = select_theme(xiaohongshu_post)
+    return {
+        "topic": topic['title'],
+        "post_file": file_name,
+        "post_content": xiaohongshu_post,
+        "hashtags": hashtags
+    }
 
-    # 6. 生成单个卡片
-    print(f"正在生成小红书卡片: {topic['title']} (Theme: {theme})...")
-    card_data = generate_xhs_card(xiaohongshu_post, keywords=topic['title'], count=1, theme=theme)
+def generate_image_for_post(post_content: str, topic_title: str):
+    """
+    为指定的笔记内容生成图片。
+    """
+    # 1. 选择主题
+    theme = select_theme(post_content)
+
+    # 2. 生成单个卡片
+    print(f"正在生成小红书卡片: {topic_title} (Theme: {theme})...")
+    card_data = generate_xhs_card(post_content, keywords=topic_title, count=1, theme=theme)
 
     if card_data and 'images' in card_data and card_data['images']:
-        print(f"'{topic['title']}' 的小红书卡片生成成功 (共 {len(card_data['images'])} 张)。")
-        
-        # 构造返回数据结构
-        logging.info(f"process_single_topic 返回的话题#: {hashtags}")
-        return {
-            "topic": topic['title'],
-            "post_file": file_name,
-            "post_content": xiaohongshu_post,
-            "card_data": card_data,
-            "hashtags": hashtags # Add hashtags here
-        }
+        print(f"'{topic_title}' 的小红书卡片生成成功 (共 {len(card_data['images'])} 张)。")
+        return card_data
     else:
-        print(f"'{topic['title']}' 的小红书卡片生成失败。")
+        print(f"'{topic_title}' 的小红书卡片生成失败。")
         return None
 
 def main():
@@ -420,7 +422,7 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=topic_count) as executor:
         # 提交所有任务
         future_to_topic = {
-            executor.submit(process_single_topic, topic, i+1, len(selected_topics)): topic 
+            executor.submit(process_single_topic_text_only, topic, i+1, len(selected_topics)): topic 
             for i, topic in enumerate(selected_topics)
         }
         
@@ -429,6 +431,10 @@ def main():
             try:
                 result = future.result()
                 if result:
+                    # Now generate the image
+                    card_data = generate_image_for_post(result['post_content'], result['topic'])
+                    if card_data:
+                        result['card_data'] = card_data
                     results_data.append(result)
             except Exception as exc:
                 print(f"处理话题 '{topic['title']}' 时产生异常: {exc}")

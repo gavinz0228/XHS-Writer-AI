@@ -95,16 +95,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const div = document.createElement('div');
         div.className = 'result-card';
 
-        let imagesHtml = '';
-        if (result.images && result.images.length > 0) {
-            imagesHtml = `<div class="card-images-container">`;
-            result.images.forEach(url => {
-                imagesHtml += `<img src="${url}" alt="${result.topic}" class="card-image" onclick="window.open('${url}', '_blank')">`;
-            });
-            imagesHtml += `</div>`;
-        } else {
-            imagesHtml = `<img src="https://via.placeholder.com/225x300?text=No+Image" class="card-image">`;
-        }
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'card-images-container';
+        imageContainer.innerHTML = `<div class="placeholder">点击生成图片</div>`;
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'card-content';
 
         let hashtagsHtml = '';
         if (result.hashtags && result.hashtags.length > 0) {
@@ -115,14 +111,55 @@ document.addEventListener('DOMContentLoaded', () => {
             hashtagsHtml += `</div>`;
         }
 
-        div.innerHTML = `
-            ${imagesHtml}
-            <div class="card-content">
-                <h3 class="card-title">${result.topic}</h3>
-                <div class="card-text">${result.post_content || '暂无内容'}</div>
-                ${hashtagsHtml} <!-- Add hashtags here -->
-            </div>
+        contentDiv.innerHTML = `
+            <h3 class="card-title">${result.topic}</h3>
+            <div class="card-text">${result.post_content || '暂无内容'}</div>
+            ${hashtagsHtml}
         `;
+
+        div.appendChild(imageContainer);
+        div.appendChild(contentDiv);
+
+        imageContainer.addEventListener('click', async () => {
+            if (imageContainer.classList.contains('loading')) return;
+
+            imageContainer.classList.add('loading');
+            imageContainer.innerHTML = '<div class="loader"></div>';
+
+            try {
+                const response = await fetch('/api/generate_image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        post_content: result.post_content,
+                        topic_title: result.topic
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('图片生成失败: ' + data.error);
+                    imageContainer.innerHTML = `<div class="placeholder error">生成失败，点击重试</div>`;
+                } else {
+                    let imagesHtml = '';
+                    if (data.images && data.images.length > 0) {
+                        data.images.forEach(url => {
+                            imagesHtml += `<img src="${url}" alt="${result.topic}" class="card-image" onclick="window.open('${url}', '_blank')">`;
+                        });
+                        imageContainer.innerHTML = imagesHtml;
+                    } else {
+                        imageContainer.innerHTML = `<div class="placeholder error">未返回图片</div>`;
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('发生网络错误');
+                imageContainer.innerHTML = `<div class="placeholder error">网络错误，点击重试</div>`;
+            } finally {
+                imageContainer.classList.remove('loading');
+            }
+        });
 
         return div;
     }
