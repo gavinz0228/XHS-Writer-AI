@@ -74,7 +74,7 @@ def select_interesting_topics(topics: list, count: int = 1):
     topics_with_indices = [{"index": i, "title": topic['title']} for i, topic in enumerate(topics)]
     
     prompt = f"""
-    从以下热点话题列表中，首先过滤掉那些积极向上但内容无聊的话题，然后挑选出 {count} 个最有趣、最能影响年轻人情绪的话题（例如娱乐八卦、热门游戏、网络潮流等）。
+    从以下热点话题列表中，首先过滤掉那些积极向上但内容无聊的话题，然后挑选出 {count} 个生活资讯/网络焦点（任何和时政的话题除外！）。
     请以JSON格式返回这 {count} 个话题在列表中的索引（index），例如：
     [0, 5, 10]
 
@@ -146,7 +146,7 @@ def generate_xiaohongshu_post(topic_title: str, topic_url: str, search_results: 
 
     prompt = f"""
     你是一个小红书爆款笔记创作者。请根据以下热点话题和搜索结果，
-    撰写一篇吸引人的小红书笔记。笔记内容要有趣，活泼，容易调动读者情绪，
+    撰写一篇吸引人的小红书笔记。
     可以使用少量表情符号，多用网络流行语，字数严格控制在 {word_limit} 字以内。
     请确保笔记内容原创，避免直接复制搜索结果。
     请不要在笔记内容中包含任何话题#。
@@ -163,10 +163,10 @@ def generate_xiaohongshu_post(topic_title: str, topic_url: str, search_results: 
         response = llm_client.chat.completions.create(
             model=llm_model,
             messages=[
-                {"role": "system", "content": "你是一个小红书的时尚，搞笑，关注时事娱乐生活博主。你擅长于使用流行网络用语和编写抓人眼球的标题和内容。"},
+                {"role": "system", "content": "你是一个关注时事娱乐生活小红书博主。你擅长于你使用讽刺，戏虐的预期调用用户情绪，担内容决定不涉及政治话题。"},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=200, # 限制 token 数以确保简短
+            #max_tokens=200, # 限制 token 数以确保简短
             temperature=0.7,
         )
         return response.choices[0].message.content.strip()
@@ -256,7 +256,7 @@ def select_theme(content: str) -> str:
         "cyberpunk",
         "meadow-dawn"
     ]
-    
+    themes = ["pop-art"]
     prompt = f"""
     请根据以下小红书笔记内容，从给定的主题列表中选择一个最合适的主题。
     
@@ -315,8 +315,15 @@ def generate_xhs_card(text: str, keywords: str = "hot topic", count: int = 1, th
         "mdxMode": False,
         "width": 440,
         "height": 586,
-        "splitMode": "noSplit",
+        "splitMode": "autoSplit",
         "background": "",
+        "font": {
+            "family": "MaokenAssortedSans",
+            "style": "normal",
+            "weight": "400",
+            "display": "swap",
+            "value": "mksjh|0"
+        },
         "weChatMode": False
         }
     
