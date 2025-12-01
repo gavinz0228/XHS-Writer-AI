@@ -1,78 +1,50 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
+{% extends "base.html" %}
+{% block title %}XHSWriter - 爆款笔记生成器{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XHSWriter - 爆款笔记生成器</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-</head>
-
-<body>
-    <div class="container">
-        <header>
-            <h1>XHSWriter</h1>
-            <p>全自动小红书爆款内容生成引擎</p>
-            <nav class="main-nav">
-                <a href="/" class="nav-link active">🔥 热点话题</a>
-                <a href="/custom" class="nav-link">✨ 自定义话题</a>
-            </nav>
-        </header>
-
-        <main>
-            <div class="control-panel">
-                <div class="input-group">
-                    <label for="platform">热点来源</label>
-                    <select id="platform">
-                        <option value="weibo">微博 (Weibo)</option>
-                        <option value="baidu">百度 (Baidu)</option>
-                        <option value="zhihu">知乎 (Zhihu)</option>
-                        <option value="sspai">少数派 (sspai)</option>
-                        <option value="tskr">T客 (tskr)</option>
-                        <option value="36kr">36氪 (36kr)</option>
-                        <option value="ftchinese">FT中文网 (ftchinese)</option>
-                        <option value="bilibili">Bilibili</option>
-                        <option value="douban">豆瓣小组 (douban)</option>
-                        <option value="hupu">虎扑 (hupu)</option>
-                        <option value="tieba">贴吧 (tieba)</option>
-                        <option value="juejin">稀土掘金 (juejin)</option>
-                        <option value="douyin">抖音 (douyin)</option>
-                        <option value="vtex">V2EX</option>
-                        <option value="jinritoutiao">今日头条 (jinritoutiao)</option>
-                        <option value="stackoverflow">Stack Overflow</option>
-                        <option value="github">GitHub</option>
-                        <option value="hackernews">Hacker News</option>
-                        <option value="sina_finance">新浪财经 (sina_finance)</option>
-                        <option value="eastmoney">东方财富 (eastmoney)</option>
-                        <option value="xueqiu">雪球 (xueqiu)</option>
-                        <option value="cls">财联社 (cls)</option>
-                        <option value="tenxunwang">腾讯网 (tenxunwang)</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label for="count">生成数量</label>
-                    <input type="number" id="count" value="1" min="1" max="5">
-                </div>
-
-                <button id="generateBtn" class="primary-btn">
-                    <span class="btn-text">开始生成</span>
-                    <span class="loader"></span>
-                </button>
-            </div>
-
-            <div id="results" class="results-grid">
-                <!-- 结果卡片将在这里动态生成 -->
-            </div>
-        </main>
-
-        <footer>
-            <p>Powered by OpenAI & DeepSeek & md2card</p>
-        </footer>
+{% block content %}
+<div class="control-panel">
+    <div class="input-group">
+        <label for="platform">热点来源</label>
+        <select id="platform">
+            <option value="weibo">微博 (Weibo)</option>
+            <option value="baidu">百度 (Baidu)</option>
+            <option value="zhihu">知乎 (Zhihu)</option>
+            <option value="sspai">少数派 (sspai)</option>
+            <option value="tskr">T客 (tskr)</option>
+            <option value="36kr">36氪 (36kr)</option>
+            <option value="ftchinese">FT中文网 (ftchinese)</option>
+            <option value="ftpojie">吾爱破解 (ftpojie)</option>
+            <option value="bilibili">Bilibili</option>
+            <option value="douban">豆瓣小组 (douban)</option>
+            <option value="hupu">虎扑 (hupu)</option>
+            <option value="tieba">贴吧 (tieba)</option>
+            <option value="juejin">稀土掘金 (juejin)</option>
+            <option value="douyin">抖音 (douyin)</option>
+            <option value="vtex">V2EX</option>
+            <option value="jinritoutiao">今日头条 (jinritoutiao)</option>
+            <option value="stackoverflow">Stack Overflow</option>
+            <option value="github">GitHub</option>
+            <option value="hackernews">Hacker News</option>
+            <option value="sina_finance">新浪财经 (sina_finance)</option>
+            <option value="eastmoney">东方财富 (eastmoney)</option>
+            <option value="xueqiu">雪球 (xueqiu)</option>
+            <option value="cls">财联社 (cls)</option>
+            <option value="tenxunwang">腾讯网 (tenxunwang)</option>
+        </select>
     </div>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</body>
+    <div class="input-group">
+        <label for="count">生成数量</label>
+        <input type="number" id="count" value="1" min="1" max="5">
+    </div>
 
-</html>
+    <button id="generateBtn" class="primary-btn">
+        <span class="btn-text">开始生成</span>
+        <span class="loader"></span>
+    </button>
+</div>
+
+<div id="results" class="results-grid">
+    <!-- 结果卡片将在这里动态生成 -->
+</div>
+{% endblock %}

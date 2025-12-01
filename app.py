@@ -1,12 +1,98 @@
 from flask import Flask, render_template, request, jsonify
 import concurrent.futures
-from main import fetch_hot_topics, select_interesting_topics, process_single_topic_text_only, generate_image_for_post, search_with_tavily, generate_xiaohongshu_post, generate_xhs_card, select_theme, generate_hashtags
+from main import fetch_hot_topics, select_interesting_topics, process_single_topic_text_only, generate_images_for_post, search_with_tavily, generate_xiaohongshu_post, generate_xhs_card, select_theme, generate_hashtags, fetch_hot_topics_from_multiple_sources
 
 app = Flask(__name__)
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/events')
+def events():
+    return render_template('events.html')
+
+@app.route('/api/events', methods=['POST'])
+def api_events():
+    data = request.json
+    platforms = data.get('platforms', [])
+    if not platforms:
+        return jsonify({"events": []})
+        
+    events = fetch_hot_topics_from_multiple_sources(platforms)
+    return jsonify({"events": events})
+
+@app.route('/api/generate_text_from_event', methods=['POST'])
+def generate_text_from_event():
+    data = request.json
+    title = data.get('title', '').strip()
+    
+    if not title:
+        return jsonify({"error": "请输入话题内容"}), 400
+
+    print(f"收到生成文本请求: {title}")
+
+    try:
+        # 1. 搜索
+        search_results = search_with_tavily(title)
+        
+        # 2. 生成笔记
+        post_content = generate_xiaohongshu_post(title, "", search_results)
+        
+        return jsonify({
+            "topic": title,
+            "post_content": post_content
+        })
+
+    except Exception as e:
+        print(f"处理生成文本请求出错: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/generate_hashtags_from_text', methods=['POST'])
+def generate_hashtags_from_text():
+    data = request.json
+    title = data.get('title', '').strip()
+    post_content = data.get('post_content', '').strip()
+    
+    if not title or not post_content:
+        return jsonify({"error": "缺少话题或笔记内容"}), 400
+
+    print(f"收到生成话题#请求: {title}")
+
+    try:
+        # 1. 生成话题#
+        hashtags = generate_hashtags(title, post_content)
+        
+        return jsonify({
+            "hashtags": hashtags
+        })
+
+    except Exception as e:
+        print(f"处理生成话题#请求出错: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/generate_image_from_text', methods=['POST'])
+def generate_image_from_text():
+    data = request.json
+    title = data.get('title', '').strip()
+    post_content = data.get('post_content', '').strip()
+    
+    if not title or not post_content:
+        return jsonify({"error": "缺少话题或笔记内容"}), 400
+
+    print(f"收到生成图片请求: {title}")
+
+    try:
+        # 1. 生成图片
+        images_data = generate_images_for_post(post_content, title)
+        
+        return jsonify({
+            "card_data": images_data
+        })
+
+    except Exception as e:
+        print(f"处理生成图片请求出错: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/generate', methods=['POST'])
 def generate():
@@ -52,8 +138,8 @@ def generate():
 
     return jsonify({"results": results})
 
-@app.route('/api/generate_image', methods=['POST'])
-def generate_image():
+@app.route('/api/generate_images', methods=['POST'])
+def generate_images():
     data = request.json
     post_content = data.get('post_content', '')
     topic_title = data.get('topic_title', '')
@@ -61,11 +147,11 @@ def generate_image():
     if not post_content or not topic_title:
         return jsonify({"error": "缺少 'post_content' 或 'topic_title'"}), 400
 
-    card_data = generate_image_for_post(post_content, topic_title)
+    # This function now returns a dict with 'title_images' and 'content_images'
+    images_data = generate_images_for_post(post_content, topic_title)
 
-    if card_data and 'images' in card_data:
-        image_urls = [img['url'] for img in card_data.get('images', [])]
-        return jsonify({"images": image_urls})
+    if images_data and (images_data.get('title_images') or images_data.get('content_images')):
+        return jsonify(images_data)
     else:
         return jsonify({"error": "无法生成图片"}), 500
 
@@ -101,16 +187,16 @@ def generate_custom():
         # 3. 生成话题#
         hashtags = generate_hashtags(topic, post_content)
 
-        # 4. 选择主题
-        theme = select_theme(post_content)
-        
-        # 5. 生成单个卡片
-        print(f"正在生成自定义话题卡片 (Theme: {theme})...")
-        card_data = generate_xhs_card(post_content, keywords=topic, count=1, theme=theme)
-        
+        # 4. 生成图片 (标题+内容)
+        print(f"正在为自定义话题生成图片: {topic}...")
+        images_data = generate_images_for_post(post_content, topic)
+
         all_image_urls = []
-        if card_data and 'images' in card_data:
-            all_image_urls.extend([img['url'] for img in card_data['images']])
+        if images_data:
+            title_images = images_data.get('title_images', [])
+            content_images = images_data.get('content_images', [])
+            all_image_urls.extend(title_images)
+            all_image_urls.extend(content_images)
         
         return jsonify({
             "topic": topic,

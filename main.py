@@ -95,10 +95,13 @@ def select_interesting_topics(topics: list, count: int = 1):
         
         selected_indices = []
         if isinstance(result, dict):
-            # 尝试在值中查找整数列表
+            # 尝试在值中查找整数列表或单个整数
             for key, value in result.items():
                 if isinstance(value, list):
                     selected_indices = value
+                    break
+                elif isinstance(value, int):
+                    selected_indices = [value]
                     break
         elif isinstance(result, list):
             selected_indices = result
@@ -109,7 +112,7 @@ def select_interesting_topics(topics: list, count: int = 1):
         return selected_topics[:count]
     except Exception as e:
         print(f"挑选有趣话题时出错: {e}")
-        return topics[:count]
+        return []
 
 
 def search_with_tavily(query: str):
@@ -194,6 +197,7 @@ def generate_hashtags(topic_title: str, xiaohongshu_post: str) -> list:
     小红书笔记内容:
     {xiaohongshu_post}
     """
+    raw_response_content = "" # Initialize to empty string
     try:
         response = llm_client.chat.completions.create(
             model=llm_model,
@@ -223,6 +227,16 @@ def generate_hashtags(topic_title: str, xiaohongshu_post: str) -> list:
         else:
             logging.warning(f"LLM 返回的话题#格式不正确，返回空列表。原始响应: {result}")
             return []
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON 解析错误，尝试从原始响应中提取话题#: {e}")
+        # Fallback: try to extract hashtags using regex if JSON parsing fails
+        import re
+        # This regex looks for strings that start with # and contain Chinese characters, letters, or numbers
+        # It also handles cases where there might be a missing quote before a hashtag
+        potential_hashtags = re.findall(r'#[\w\u4e00-\u9fa5]+', raw_response_content)
+        hashtags = [tag for tag in potential_hashtags if tag.startswith('#')][:10]
+        logging.info(f"通过正则提取的话题#: {hashtags}")
+        return hashtags
     except Exception as e:
         logging.error(f"生成话题#时出错: {e}")
         return []
@@ -307,10 +321,12 @@ def generate_xhs_card(text: str, keywords: str = "hot topic", count: int = 1, th
         "x-api-key": MD2CARD_API_KEY,
         "Content-Type": "application/json"
     }
+
     payload = {
         "markdown": text,
         "themeMode": "",
         "theme": theme,
+        "keywords": keywords,
         "overHiddenMode": True,
         "mdxMode": False,
         "width": 440,
@@ -322,7 +338,8 @@ def generate_xhs_card(text: str, keywords: str = "hot topic", count: int = 1, th
             "style": "normal",
             "weight": "400",
             "display": "swap",
-            "value": "mksjh|0"
+            "value": "default",
+            "level": 4
         },
         "weChatMode": False
         }
@@ -379,23 +396,55 @@ def process_single_topic_text_only(topic, index, total):
         "hashtags": hashtags
     }
 
-def generate_image_for_post(post_content: str, topic_title: str):
+def generate_images_for_post(post_content: str, topic_title: str):
     """
-    为指定的笔记内容生成图片。
+    为指定的笔记内容和标题生成图片。
     """
-    # 1. 选择主题
-    theme = select_theme(post_content)
+    
+    def generate_for_type(text, theme_override=None, keywords=""):
+        theme = theme_override if theme_override else select_theme(text)
+        print(f"正在为 '{keywords}' 生成小红书卡片 (Theme: {theme})...")
+        card_data = generate_xhs_card(text, keywords=keywords, count=1, theme=theme)
+        if card_data and 'images' in card_data and card_data['images']:
+            print(f"'{keywords}' 的卡片生成成功 (共 {len(card_data['images'])} 张)。")
+            return [img['url'] for img in card_data['images']]
+        else:
+            print(f"'{keywords}' 的卡片生成失败。")
+            return []
 
-    # 2. 生成单个卡片
-    print(f"正在生成小红书卡片: {topic_title} (Theme: {theme})...")
-    card_data = generate_xhs_card(post_content, keywords=topic_title, count=1, theme=theme)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        # 并行生成标题图和内容图
+        future_title = executor.submit(generate_for_type, f"<br/><br/>\n<br/>\n<br/># {topic_title}", theme_override="apple-notes", keywords=topic_title)
+        future_content = executor.submit(generate_for_type, post_content, theme_override="pop-art", keywords=topic_title)
 
-    if card_data and 'images' in card_data and card_data['images']:
-        print(f"'{topic_title}' 的小红书卡片生成成功 (共 {len(card_data['images'])} 张)。")
-        return card_data
-    else:
-        print(f"'{topic_title}' 的小红书卡片生成失败。")
-        return None
+        title_images = future_title.result()
+        content_images = future_content.result()
+
+    return {
+        "title_images": title_images,
+        "content_images": content_images
+    }
+
+def fetch_hot_topics_from_multiple_sources(platforms: list):
+    """
+    从多个平台并行获取热点话题。
+    参数:
+        platforms (list): 平台名称列表。
+    返回:
+        list: 包含所有平台热点话题的字典列表。
+    """
+    all_topics = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(platforms)) as executor:
+        future_to_platform = {executor.submit(fetch_hot_topics, platform): platform for platform in platforms}
+        for future in concurrent.futures.as_completed(future_to_platform):
+            platform = future_to_platform[future]
+            try:
+                topics = future.result()
+                if topics:
+                    all_topics.extend(topics)
+            except Exception as exc:
+                print(f"从 {platform} 获取热点话题时产生异常: {exc}")
+    return all_topics
 
 def main():
     print("正在启动 XHSWriter...")
@@ -444,9 +493,9 @@ def main():
                 result = future.result()
                 if result:
                     # Now generate the image
-                    card_data = generate_image_for_post(result['post_content'], result['topic'])
-                    if card_data:
-                        result['card_data'] = card_data
+                    images_data = generate_images_for_post(result['post_content'], result['topic'])
+                    if images_data:
+                        result['card_data'] = images_data
                     results_data.append(result)
             except Exception as exc:
                 print(f"处理话题 '{topic['title']}' 时产生异常: {exc}")

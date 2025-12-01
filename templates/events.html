@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}热点事件{% endblock %}
+
+{% block content %}
+<div class="control-panel">
+    <div class="input-group">
+        <label for="platforms">热点来源</label>
+        <div id="platforms" class="platforms-container">
+            <label><input type="checkbox" name="platform" value="baidu" checked> 百度</label>
+            <label><input type="checkbox" name="platform" value="weibo" checked> 微博</label>
+            <label><input type="checkbox" name="platform" value="tskr"> T客</label>
+            <label><input type="checkbox" name="platform" value="jinritoutiao"> 今日头条</label>
+            <label><input type="checkbox" name="platform" value="douyin"> 抖音</label>
+        </div>
+    </div>
+    <button id="fetchBtn" class="primary-btn">
+        <span class="btn-text">获取话题</span>
+        <span class="loader"></span>
+    </button>
+</div>
+
+<div id="results" class="results-grid">
+    <!-- 结果卡片将在这里动态生成 -->
+</div>
+{% endblock %}

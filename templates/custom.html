@@ -1,49 +1,20 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
+{% extends "base.html" %}
+{% block title %}XHSWriter - 自定义话题{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XHSWriter - 自定义话题</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-</head>
-
-<body>
-    <div class="container">
-        <header>
-            <h1>XHSWriter</h1>
-            <p>全自动小红书爆款内容生成引擎</p>
-            <nav class="main-nav">
-                <a href="/" class="nav-link">🔥 热点话题</a>
-                <a href="/custom" class="nav-link active">✨ 自定义话题</a>
-            </nav>
-        </header>
-
-        <main>
-            <div class="control-panel">
-                <div class="input-group" style="flex: 2;">
-                    <label for="customTopic">输入自定义话题</label>
-                    <input type="text" id="customTopic" placeholder="例如：AI技术发展、王鹤棣新剧...">
-                </div>
-
-                <button id="generateCustomBtn" class="primary-btn">
-                    <span class="btn-text">生成笔记</span>
-                    <span class="loader"></span>
-                </button>
-            </div>
-
-            <div id="results" class="results-grid">
-                <!-- 结果卡片将在这里动态生成 -->
-            </div>
-        </main>
-
-        <footer>
-            <p>Powered by OpenAI & DeepSeek & md2card</p>
-        </footer>
+{% block content %}
+<div class="control-panel">
+    <div class="input-group" style="flex: 2;">
+        <label for="customTopic">输入自定义话题</label>
+        <input type="text" id="customTopic" placeholder="例如：AI技术发展、王鹤棣新剧...">
     </div>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</body>
+    <button id="generateCustomBtn" class="primary-btn">
+        <span class="btn-text">生成笔记</span>
+        <span class="loader"></span>
+    </button>
+</div>
 
-</html>
+<div id="results" class="results-grid">
+    <!-- 结果卡片将在这里动态生成 -->
+</div>
+{% endblock %}
