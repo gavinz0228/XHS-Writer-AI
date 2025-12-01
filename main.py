@@ -362,7 +362,7 @@ def generate_xhs_card(text: str, keywords: str = "hot topic", count: int = 1, th
 
 def process_single_topic_text_only(topic, index, total):
     """
-    处理单个话题：搜索 -> 生成笔记和话题#。
+    处理单个话题：搜索 -> 生成笔记。
     """
     print(f"\n--- 正在处理话题 {index}/{total}: {topic['title']} ---")
     
@@ -386,14 +386,10 @@ def process_single_topic_text_only(topic, index, total):
         f.write(xiaohongshu_post)
     print(f"笔记已保存至 {file_name}")
 
-    # 4. 生成话题#
-    hashtags = generate_hashtags(topic['title'], xiaohongshu_post)
-
     return {
         "topic": topic['title'],
         "post_file": file_name,
-        "post_content": xiaohongshu_post,
-        "hashtags": hashtags
+        "post_content": xiaohongshu_post
     }
 
 def generate_images_for_post(post_content: str, topic_title: str):

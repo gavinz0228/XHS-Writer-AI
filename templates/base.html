@@ -13,9 +13,9 @@
             <h1>XHSWriter</h1>
             <p>全自动小红书爆款内容生成引擎</p>
             <nav class="main-nav">
-                <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">🔥 热点话题</a>
+                <a href="{{ url_for('events') }}" class="nav-link {% if request.endpoint == 'events' %}active{% endif %}">📅 话题列表</a>
+                <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">🔥 智能选题</a>
                 <a href="{{ url_for('custom') }}" class="nav-link {% if request.endpoint == 'custom' %}active{% endif %}">✨ 自定义话题</a>
-                <a href="{{ url_for('events') }}" class="nav-link {% if request.endpoint == 'events' %}active{% endif %}">话题列表</a>
             </nav>
         </header>
 

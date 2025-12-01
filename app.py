@@ -4,11 +4,11 @@ from main import fetch_hot_topics, select_interesting_topics, process_single_top
 
 app = Flask(__name__)
 
-@app.route('/')
+@app.route('/intelligent_selection')
 def index():
     return render_template('index.html')
 
-@app.route('/events')
+@app.route('/')
 def events():
     return render_template('events.html')
 
@@ -130,8 +130,7 @@ def generate():
                     results.append({
                         "topic": result['topic'],
                         "post_file": result['post_file'],
-                        "post_content": result.get('post_content', ''),
-                        "hashtags": result.get('hashtags', [])
+                        "post_content": result.get('post_content', '')
                     })
             except Exception as exc:
                 print(f"处理话题时出错: {exc}")
@@ -171,39 +170,16 @@ def generate_custom():
 
     try:
         # 1. 搜索
-        from main import search_with_tavily, generate_xiaohongshu_post, generate_xhs_card, select_theme, generate_hashtags
+        from main import search_with_tavily, generate_xiaohongshu_post
         
         search_results = search_with_tavily(topic)
         
         # 2. 生成笔记 (字数限制 120)
         post_content = generate_xiaohongshu_post(topic, "", search_results, word_limit=120)
         
-        # 保存到文件
-        import time
-        file_name = f"xiaohongshu_custom_{int(time.time())}.md"
-        with open(file_name, "w", encoding="utf-8") as f:
-            f.write(post_content)
-            
-        # 3. 生成话题#
-        hashtags = generate_hashtags(topic, post_content)
-
-        # 4. 生成图片 (标题+内容)
-        print(f"正在为自定义话题生成图片: {topic}...")
-        images_data = generate_images_for_post(post_content, topic)
-
-        all_image_urls = []
-        if images_data:
-            title_images = images_data.get('title_images', [])
-            content_images = images_data.get('content_images', [])
-            all_image_urls.extend(title_images)
-            all_image_urls.extend(content_images)
-        
         return jsonify({
             "topic": topic,
-            "post_file": file_name,
-            "post_content": post_content,
-            "images": all_image_urls,
-            "hashtags": hashtags
+            "post_content": post_content
         })
 
     except Exception as e:
